@@ -180,14 +180,18 @@ bool NetworkController::ArpSpoofing(const QString interface,const QString sender
 }
 
 void NetworkController::ShowPacket(const QString interface,const uint16_t etherType, const QString ip, const IpHdr::PROTOCOL_ID_TYPE type) {
+    //check interface name
     while(!GetPacket(interface));
     QString ret;
 
+    //later thread
     for(const auto& data : recvDatas_) {
+        //arp header size : 28
         if(data.header->caplen < sizeof(EthHdr) + sizeof(IpHdr)) continue;
-        EthHdr* etherHeader = reinterpret_cast<EthHdr*>(data.buf);
+
         ret.clear();
 
+        EthHdr* etherHeader = reinterpret_cast<EthHdr*>(data.buf);
         ret.append("---Ethernet--- \r\n");
         ret.append("source mac address : " + string(etherHeader->smac()) + "\r\n");
         ret.append("destination mac address : " + string(etherHeader->dmac()) + "\r\n");
@@ -212,52 +216,52 @@ void NetworkController::ShowPacket(const QString interface,const uint16_t etherT
                 break;
             }
             case EthHdr::Ip4: {
-                    IpHdr* ipHeader = reinterpret_cast<IpHdr*>(data.buf + sizeof(EthHdr));
+                IpHdr* ipHeader = reinterpret_cast<IpHdr*>(data.buf + sizeof(EthHdr));
 
-                    if(ip.isEmpty() || (ipHeader->sip().compare(ip.toStdString()) == 0 || ipHeader->dip().compare(ip.toStdString()) == 0)) {
-                        //if(ipHeader->sip().compare(ip.toStdString()) == 0 || ipHeader->dip().compare(ip.toStdString()) == 0) {
-                        if(ipHeader->protocolId_ != type) continue;
+                if(ip.isEmpty() || (ipHeader->sip().compare(ip.toStdString()) == 0 || ipHeader->dip().compare(ip.toStdString()) == 0)) {
+                    //if(ipHeader->sip().compare(ip.toStdString()) == 0 || ipHeader->dip().compare(ip.toStdString()) == 0) {
+                    if(ipHeader->protocolId_ != type) continue;
 
-                        ret.append("------IP------ \r\n");
-                        ret.append("source ip : " + ipHeader->sip() + "\r\n");
-                        ret.append("destination ip : "  + ipHeader->dip() + "\r\n");
+                    ret.append("------IP------ \r\n");
+                    ret.append("source ip : " + ipHeader->sip() + "\r\n");
+                    ret.append("destination ip : "  + ipHeader->dip() + "\r\n");
 
-                        switch(ipHeader->protocolId_) {
-                            case IpHdr::PROTOCOL_ID_TYPE::IPv4: {
-                                // cout<<"---IP---"<<endl;
-                                // cout<<"source ip : "<<ipHeader->sip()<<endl;;
-                                // cout<<"destination ip : "<<ipHeader->dip()<<endl;;
-                                break;
-                            }
-                            case IpHdr::PROTOCOL_ID_TYPE::ICMP: {
-                                // cout<<"---ICMP---"<<endl;
-                                // cout<<"----------"<<endl;
-                                break;
-                            }
-                            case IpHdr::PROTOCOL_ID_TYPE::TCP: {
-                                TcpHdr* tcpHeader = reinterpret_cast<TcpHdr*>(data.buf + sizeof(EthHdr) + ipHeader->len());
-
-                                ret.append("-----TCP------ \r\n");
-                                ret.append("source port : " + QString::number(tcpHeader->sPort()) + "\r\n");
-                                ret.append("destination port : " + QString::number(tcpHeader->dPort()) + "\r\n");
-
-                                if(ipHeader->totalLen() - (ipHeader->len() + tcpHeader->len()) > 0) {
-                                    //uint8_t* payLoad = data.buf + sizeof(EthHdr) + offset);
-                                    uint8_t* payLoad = data.buf + sizeof(EthHdr) + (ipHeader->len() + tcpHeader->len());
-                                    ret.append("payload : ");
-                                    for(int i=0; i<20; i++)
-                                        ret.append(QString("%1").arg(payLoad[i], 2, 16, QLatin1Char('0')));
-                                    ret.append("\r\n");
-                                }
-                                ret.append("-------------- \r\n");
-                                break;
-                            }
-                            defualt:
-                                break;
+                    switch(ipHeader->protocolId_) {
+                        case IpHdr::PROTOCOL_ID_TYPE::IPv4: {
+                            // cout<<"---IP---"<<endl;
+                            // cout<<"source ip : "<<ipHeader->sip()<<endl;;
+                            // cout<<"destination ip : "<<ipHeader->dip()<<endl;;
+                            break;
                         }
+                        case IpHdr::PROTOCOL_ID_TYPE::ICMP: {
+                            // cout<<"---ICMP---"<<endl;
+                            // cout<<"----------"<<endl;
+                            break;
+                        }
+                        case IpHdr::PROTOCOL_ID_TYPE::TCP: {
+                            TcpHdr* tcpHeader = reinterpret_cast<TcpHdr*>(data.buf + sizeof(EthHdr) + ipHeader->len());
+
+                            ret.append("-----TCP------ \r\n");
+                            ret.append("source port : " + QString::number(tcpHeader->sPort()) + "\r\n");
+                            ret.append("destination port : " + QString::number(tcpHeader->dPort()) + "\r\n");
+
+                            if(ipHeader->totalLen() - (ipHeader->len() + tcpHeader->len()) > 0) {
+                                //uint8_t* payLoad = data.buf + sizeof(EthHdr) + offset);
+                                uint8_t* payLoad = data.buf + sizeof(EthHdr) + (ipHeader->len() + tcpHeader->len());
+                                ret.append("payload : ");
+                                for(int i=0; i<20; i++)
+                                    ret.append(QString("%1").arg(payLoad[i], 2, 16, QLatin1Char('0')));
+                                ret.append("\r\n");
+                            }
+                            ret.append("-------------- \r\n");
+                            break;
+                        }
+                        defualt:
+                            break;
                     }
-                    break;
                 }
+                break;
+            }
 
             default:
                     break;
